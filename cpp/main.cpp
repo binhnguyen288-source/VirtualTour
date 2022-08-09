@@ -1,30 +1,40 @@
-#include "Utils.hpp"
-#include <array>
+#include <cstdint>
+#include <cmath>
+#include <algorithm>
 
+inline std::pair<float, float> mapsToCube(float x, float y, float z) {
 
+    float offset = 1;
 
-RGBA* curCubeMap = nullptr;
-int nCubeSide = 0;
+    if (std::fabs(x) < std::fabs(y)) {
+        std::swap(x, y);
+        offset = 3;
+    }
 
-extern "C" void jsCubeMap(std::uint8_t* src_data, std::uint8_t* dst_data, int nWidth, int nHeight) {
+    if (std::fabs(x) < std::fabs(z)) {
+        std::swap(x, z);
+        if (offset < 2) std::swap(y, z);
+        offset = 5;
+    }
+
+    float const norm = 1.0f / std::fabs(x);
+
+    x *= norm;
+    y *= norm;
+    z *= norm;
     
-    RGBA* src = new RGBA(nWidth, nHeight);
-    std::copy_n(src_data, 4 * nWidth * nHeight, src->data);
-    delete curCubeMap;
-    nCubeSide = nWidth / 2;
-    curCubeMap = toCubeMap(*src);
-    delete src;
-    std::copy_n(curCubeMap->data, 4 * nCubeSide * 6 * nCubeSide, dst_data);
-
-    
+    return {
+        (1 + y) / 2,
+        offset + (z - x) / 2,
+    };
 }
 
-const int nThreads = 4;
 
-
-extern "C" void viewerQuery(std::uint8_t* dst, int dstWidth, int dstHeight, float theta0, float phi0, float hfov) {
-
-   
+extern "C" void viewerQuery(
+    std::uint8_t* dst, 
+    int dstWidth, int dstHeight, float theta0, float phi0, float hfov,
+    std::uint8_t const* cubemap, int nCubeSide
+) {
 
     float const aspectRatio = (float)dstHeight / dstWidth;
     float const f           = std::tan(hfov / 2);
@@ -46,8 +56,8 @@ extern "C" void viewerQuery(std::uint8_t* dst, int dstWidth, int dstHeight, floa
         float YonPlane = -f; // initial Yonplane
         constexpr float ZonPlane = 1;
 
-            float Rotx = XonPlane * Rot[0] + YonPlane * Rot[1] + ZonPlane * Rot[2];
-            float Roty = XonPlane * Rot[3] + YonPlane * Rot[4] + ZonPlane * Rot[5];
+              float Rotx = XonPlane * Rot[0] + YonPlane * Rot[1] + ZonPlane * Rot[2];
+              float Roty = XonPlane * Rot[3] + YonPlane * Rot[4] + ZonPlane * Rot[5];
         const float Rotz = XonPlane * Rot[6] + YonPlane * Rot[7] + ZonPlane * Rot[8];
 
         for (int j = 0; j < dstWidth; ++j) {
@@ -55,19 +65,15 @@ extern "C" void viewerQuery(std::uint8_t* dst, int dstWidth, int dstHeight, floa
 
             auto [srci, srcj] = mapsToCube(Rotx, Roty, Rotz);
 
-            const int ii = srci * nCubeSide;
-            const int jj = srcj * nCubeSide;
+            const int ii = std::clamp(srci * nCubeSide, 0.0f, nCubeSide - 1.0f);
+            const int jj = std::clamp(srcj * nCubeSide, 0.0f, 6 * nCubeSide - 1.0f);
 
-            std::copy_n(curCubeMap->getCPixelRaw(jj, ii), 4, &dst[4 * (i * dstWidth + j)]);
+            std::copy_n(&cubemap[4 * (nCubeSide * jj + ii)], 4, &dst[4 * (i * dstWidth + j)]);
             
             Rotx += incY * Rot[1];
             Roty += incY * Rot[4];
 
         }
     }
-
-
-
-
 
 }
