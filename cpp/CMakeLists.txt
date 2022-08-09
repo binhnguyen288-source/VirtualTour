@@ -9,7 +9,7 @@ add_compile_options(-O3 -ffast-math)
 add_link_options(
     -O3 -ffast-math
     -sEXPORTED_FUNCTIONS=_malloc,_free,_viewerQuery
-    -sSINGLE_FILE -sALLOW_MEMORY_GROWTH
+    -sALLOW_MEMORY_GROWTH
     -sMODULARIZE
     -sEXPORT_NAME=wasmViewer
 )
