@@ -1,3 +1,0 @@
-C:/Users/nguye/Documents/GitHub/VirtualTour/cpp/CMakeFiles/viewer.dir
-C:/Users/nguye/Documents/GitHub/VirtualTour/cpp/CMakeFiles/edit_cache.dir
-C:/Users/nguye/Documents/GitHub/VirtualTour/cpp/CMakeFiles/rebuild_cache.dir
