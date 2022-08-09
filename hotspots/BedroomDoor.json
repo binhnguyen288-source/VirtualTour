@@ -8,19 +8,19 @@
             "theta": 3.14159,
             "phi": 1.570796,
             "text": "Go inside",
-            "redirect": "Goinside"
+            "redirect": "?image=Goinside"
         },
         {
             "theta": 2.7,
             "phi": 1.570796,
             "text": "Restroom",
-            "redirect": "Restroom"
+            "redirect": "?image=Restroom"
         },
         {
             "theta": 0.3,
             "phi": 1.570796,
             "text": "In Bedroom",
-            "redirect": "InBedroom"
+            "redirect": "?image=InBedroom"
         }
     ]
 }

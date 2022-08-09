@@ -8,7 +8,7 @@
             "theta": 0.4,
             "phi": 1.570796,
             "text": "Bedroom",
-            "redirect": "BedroomDoor"
+            "redirect": "?image=BedroomDoor"
         }
     ]
 }

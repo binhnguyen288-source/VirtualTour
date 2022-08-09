@@ -100,7 +100,7 @@
                             if (row < viewer.height && row >= 0 && 
                                 col < viewer.width && col >= 0) {
                                 hotspots.push(createHotspot(col, row, 25, () => {
-                                    if (redirect) window.location = `?image=${redirect}`;
+                                    if (redirect) window.location = redirect;
                                 }, text));
                             }
 

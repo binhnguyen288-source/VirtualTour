@@ -8,19 +8,19 @@
             "theta": 3.14159,
             "phi": 1.570796,
             "text": "Frontdoor",
-            "redirect": "Frontdoor"
+            "redirect": "?image=Frontdoor"
         },
         {
             "theta": 0,
             "phi": 1.570796,
             "text": "Television",
-            "redirect": "Television"
+            "redirect": "?image=Television"
         },
         {
             "theta": 1.1,
             "phi": 1.570796,
             "text": "Bedroom",
-            "redirect": "BedroomDoor"
+            "redirect": "?image=BedroomDoor"
         }
     ]
 }
