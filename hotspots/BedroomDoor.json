@@ -1,0 +1,26 @@
+{
+    "startupView": {
+        "theta0": 0,
+        "phi0": 1.570796
+    },
+    "allHotspots": [
+        {
+            "theta": 3.14159,
+            "phi": 1.570796,
+            "text": "Go inside",
+            "redirect": "Goinside"
+        },
+        {
+            "theta": 2.7,
+            "phi": 1.570796,
+            "text": "Restroom",
+            "redirect": "Restroom"
+        },
+        {
+            "theta": 0.3,
+            "phi": 1.570796,
+            "text": "In Bedroom",
+            "redirect": "InBedroom"
+        }
+    ]
+}
