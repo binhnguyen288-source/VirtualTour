@@ -1,6 +1,17 @@
 #include <cstdint>
 #include <cmath>
 #include <algorithm>
+#include <opencv2/opencv.hpp>
+
+static cv::Mat currentCubemap;
+extern "C" void setCubemap(uchar* rawImageContent, int size) {
+
+    cv::Mat image(1, size, CV_8U, rawImageContent);
+
+    currentCubemap = cv::imdecode(image, cv::IMREAD_COLOR);
+
+    cv::cvtColor(currentCubemap, currentCubemap, cv::COLOR_BGR2RGB);
+}
 
 inline std::pair<float, float> mapsToCube(float x, float y, float z) {
 
@@ -32,14 +43,14 @@ inline std::pair<float, float> mapsToCube(float x, float y, float z) {
 
 extern "C" void viewerQuery(
     std::uint8_t* dst, 
-    int dstWidth, int dstHeight, float theta0, float phi0, float hfov,
-    std::uint8_t const* cubemap, int nCubeSide
+    int dstWidth, int dstHeight, float theta0, float phi0, float hfov
 ) {
 
     float const aspectRatio = (float)dstHeight / dstWidth;
     float const f           = std::tan(hfov / 2);
     float const vfov        = 2 * std::atan(aspectRatio * f);
     float const incY        = 2 * f / dstWidth;
+    const int nCubeSide = currentCubemap.cols;
 
     using std::cos;
     using std::sin;
@@ -68,7 +79,11 @@ extern "C" void viewerQuery(
             const int ii = std::clamp(srci * nCubeSide, 0.0f, nCubeSide - 1.0f);
             const int jj = std::clamp(srcj * nCubeSide, 0.0f, 6 * nCubeSide - 1.0f);
 
-            std::copy_n(&cubemap[4 * (nCubeSide * jj + ii)], 4, &dst[4 * (i * dstWidth + j)]);
+            std::uint8_t*       dstPixelRGBA = &dst[4 * (i * dstWidth + j)];
+            std::uint8_t const* srcPixelRGB = &currentCubemap.data[3 * (nCubeSide * jj + ii)];
+
+            std::copy_n(srcPixelRGB, 3, dstPixelRGBA);
+            dstPixelRGBA[3] = 255;
             
             Rotx += incY * Rot[1];
             Roty += incY * Rot[4];

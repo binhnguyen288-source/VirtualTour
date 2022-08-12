@@ -24,186 +24,181 @@
                     startupView,
                     allHotspots
                 } = await (await fetch(`hotspots/${file}.json`)).json();
+
+
+                {
+                    const imageBuffer = await (await fetch(`./images/${file}.jpg`)).arrayBuffer();
+
+                    const cubemapTemp = Module._malloc(imageBuffer.byteLength);
+                    Module.HEAPU8.set(new Uint8Array(imageBuffer), cubemapTemp);
+                    Module._setCubemap(cubemapTemp, imageBuffer.byteLength);
+                    Module._free(cubemapTemp);
+                }
+
+
+
                 
                 const viewer = document.getElementById('viewer');
                 const ctxViewer = viewer.getContext("2d");
-                const image = document.createElement('img');
                 
+                
+                    
 
-                image.onload = () => {
+                let { theta0, phi0 } = startupView;
+                let hfov = Math.PI * 100 / 180;
 
-                    const nCubeSide = image.naturalWidth;
-                    const cubemapData = Module._malloc(4 * nCubeSide * 6 * nCubeSide);
-                    {
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext("2d");
-
-                        canvas.width = nCubeSide;
-                        canvas.height = nCubeSide * 6;
-
-                        ctx.drawImage(image, 0, 0);
-                        const image_data = ctx.getImageData(0, 0, nCubeSide, 6 * nCubeSide);
-                        Module.HEAPU8.set(image_data.data, cubemapData);
-                    }
+                const viewerData = Module._malloc(4 * viewer.width * viewer.height);
+                const dstImageData = ctxViewer.getImageData(0, 0, viewer.width, viewer.height);
+                let hotspots = [];
 
 
-                    let { theta0, phi0 } = startupView;
-                    let hfov = Math.PI * 100 / 180;
+                function createHotspot(x, y, radius, action, popupText) {
+                    const path = new Path2D();
+                    path.arc(x, y, radius, 0, 2 * Math.PI);
+                    return { x, y, path, action, popupText };
+                }
 
-                    const viewerData = Module._malloc(4 * viewer.width * viewer.height);
-                    const dstImageData = ctxViewer.getImageData(0, 0, viewer.width, viewer.height);
-                    let hotspots = [];
+                const renderFrame = () => {
 
-
-                    function createHotspot(x, y, radius, action, popupText) {
-                        const path = new Path2D();
-                        path.arc(x, y, radius, 0, 2 * Math.PI);
-                        return { x, y, path, action, popupText };
-                    }
-
-                    const renderFrame = () => {
-
-                        Module._viewerQuery(
-                            viewerData, 
-                            viewer.width, viewer.height, theta0, phi0, hfov,
-                            cubemapData, nCubeSide
-                        );
+                    Module._viewerQuery(
+                        viewerData,
+                        viewer.width, viewer.height, 
+                        theta0, phi0, hfov
+                    );
 
 
-                        dstImageData.data.set(Module.HEAPU8.subarray(viewerData, viewerData + 4 * viewer.width * viewer.height));
-                        ctxViewer.putImageData(dstImageData, 0, 0);
+                    dstImageData.data.set(Module.HEAPU8.subarray(viewerData, viewerData + 4 * viewer.width * viewer.height));
+                    ctxViewer.putImageData(dstImageData, 0, 0);
 
-                        hotspots = [];
-                                        
-                        const aspectRatio = viewer.height / viewer.width;
-                        const f           = Math.tan(hfov / 2);
-                        const vfov        = 2 * Math.atan(aspectRatio * f);
-
-                        for (const { theta, phi, text, redirect } of allHotspots) {
-                        
-                            let x = Math.cos(theta - theta0) * Math.sin(phi);
-                            let y = Math.sin(theta - theta0) * Math.sin(phi);
-                            let z = Math.cos(phi);
-
-                            const Rotx = x * Math.cos(phi0) - z * Math.sin(phi0);
-                            const Roty = y;
-                            const Rotz = x * Math.sin(phi0) + z * Math.cos(phi0);
-
-                            if (Rotz <= 0) continue;
-
-                            const t = 1 / Rotz;
-                            x = Rotx * t / (f * aspectRatio);
-                            y = Roty * t / f;
-
-                            const row = Math.floor(viewer.height * (x + 1) / 2);
-                            const col = Math.floor(viewer.width * (y + 1) / 2);
-                            if (row < viewer.height && row >= 0 && 
-                                col < viewer.width && col >= 0) {
-                                hotspots.push(createHotspot(col, row, 25, () => {
-                                    if (redirect) window.location = redirect;
-                                }, text));
-                            }
-
-                        }
-                        for (const hotspot of hotspots) {
-                            ctxViewer.fillStyle = 'red';
-                            ctxViewer.fill(hotspot.path);
-                        }
-                    };
-
-                    renderFrame();
-
-
-                            
-                    let isClicking = false;
-                    let prevPosition = null;
-
-                    const btnDownHandler = ({offsetX: x, offsetY: y}) => {
-
-                        for (const hotspot of hotspots) {
-                            if (ctxViewer.isPointInPath(hotspot.path, x, y)) {
-                                hotspot.action();
-                            }
-                        }
-                        isClicking = true;
-                        prevPosition = {x, y};
-                    };
-
-                    const btnUpHandler = () => {
-                        isClicking = false;
-                        prevPosition = null;
-                    }
-
-                    let shownPopup = false;
-
-                    const btnMoveHandler = ({offsetX: x, offsetY: y}) => {
-                        
-                        if (!isClicking) {
-                            renderFrame();
-                            for (const hotspot of hotspots) {
-                                if (ctxViewer.isPointInPath(hotspot.path, x, y)) {
+                    hotspots = [];
                                     
-                                    ctxViewer.font = "20px Verdana";
-                                    
-                                    ctxViewer.fillStyle = 'black';
-                                    ctxViewer.fillRect(hotspot.x - 75, hotspot.y - 60, 150, 25)
-                                    
-                                    ctxViewer.fillStyle = 'white';
-                                    ctxViewer.textAlign = "center";
-                                    ctxViewer.fillText(hotspot.popupText, hotspot.x, hotspot.y - 40, 150);
-                                }
-                            }
+                    const aspectRatio = viewer.height / viewer.width;
+                    const f           = Math.tan(hfov / 2);
+                    const vfov        = 2 * Math.atan(aspectRatio * f);
+
+                    for (const { theta, phi, text, redirect } of allHotspots) {
+                    
+                        let x = Math.cos(theta - theta0) * Math.sin(phi);
+                        let y = Math.sin(theta - theta0) * Math.sin(phi);
+                        let z = Math.cos(phi);
+
+                        const Rotx = x * Math.cos(phi0) - z * Math.sin(phi0);
+                        const Roty = y;
+                        const Rotz = x * Math.sin(phi0) + z * Math.cos(phi0);
+
+                        if (Rotz <= 0) continue;
+
+                        const t = 1 / Rotz;
+                        x = Rotx * t / (f * aspectRatio);
+                        y = Roty * t / f;
+
+                        const row = Math.floor(viewer.height * (x + 1) / 2);
+                        const col = Math.floor(viewer.width * (y + 1) / 2);
+                        if (row < viewer.height && row >= 0 && 
+                            col < viewer.width && col >= 0) {
+                            hotspots.push(createHotspot(col, row, 25, () => {
+                                if (redirect) window.location = redirect;
+                            }, text));
                         }
-                        else {
-                            const dx = x - prevPosition.x;
-                            const dy = y - prevPosition.y;
-                            theta0 += dx * 0.01;
-                            phi0 += dy * 0.01;
-                            if (phi0 < 0) phi0 = 0;
-                            if (phi0 >= Math.PI) phi0 = Math.PI;
-                            theta0 -= 2 * Math.PI * Math.floor(theta0 / (2 * Math.PI));
-                            renderFrame();
-                            prevPosition = {x, y};
-                        }
 
                     }
-
-                    viewer.onmousedown = btnDownHandler;
-                    viewer.onmousemove = btnMoveHandler;
-                    viewer.onmouseup = btnUpHandler;
-                    viewer.onmouseout = btnUpHandler;
-                    viewer.onwheel = ev => {
-                        ev.preventDefault();
-                        if (ev.deltaY > 0 && hfov < Math.PI * 150 / 180) hfov += 0.1;
-                        if (ev.deltaY < 0 && hfov > 0.1) hfov -= 0.1;
-                        
-                        renderFrame();
+                    for (const hotspot of hotspots) {
+                        ctxViewer.fillStyle = 'red';
+                        ctxViewer.fill(hotspot.path);
                     }
-
-
-
-                    viewer.ontouchstart = ev => {
-                        ev.preventDefault();
-                        const bbox = viewer.getBoundingClientRect();
-                        btnDownHandler({
-                            offsetX: ev.touches[0].clientX - bbox.x,
-                            offsetY: ev.touches[0].clientY - bbox.y
-                        });
-                    }
-                    viewer.ontouchmove = ev => {
-                        ev.preventDefault();
-                        const bbox = viewer.getBoundingClientRect();
-                        btnMoveHandler({
-                            offsetX: ev.touches[0].clientX - bbox.x,
-                            offsetY: ev.touches[0].clientY - bbox.y
-                        });
-                    };
-                    viewer.ontouchend = btnUpHandler;
-                    viewer.ontouchcancel = btnUpHandler;
-
+                    
                 };
 
-                image.src = `./images/${file}.jpg`;
+                renderFrame();
+
+
+                        
+                let isClicking = false;
+                let prevPosition = null;
+
+                const btnDownHandler = ({offsetX: x, offsetY: y}) => {
+
+                    for (const hotspot of hotspots) {
+                        if (ctxViewer.isPointInPath(hotspot.path, x, y)) {
+                            hotspot.action();
+                        }
+                    }
+                    isClicking = true;
+                    prevPosition = {x, y};
+                };
+
+                const btnUpHandler = () => {
+                    isClicking = false;
+                    prevPosition = null;
+                }
+
+                let shownPopup = false;
+
+                const btnMoveHandler = ({offsetX: x, offsetY: y}) => {
+                    
+                    if (!isClicking) {
+                        renderFrame();
+                        for (const hotspot of hotspots) {
+                            if (ctxViewer.isPointInPath(hotspot.path, x, y)) {
+                                
+                                ctxViewer.font = "20px Verdana";
+                                
+                                ctxViewer.fillStyle = 'black';
+                                ctxViewer.fillRect(hotspot.x - 75, hotspot.y - 60, 150, 25)
+                                
+                                ctxViewer.fillStyle = 'white';
+                                ctxViewer.textAlign = "center";
+                                ctxViewer.fillText(hotspot.popupText, hotspot.x, hotspot.y - 40, 150);
+                            }
+                        }
+                    }
+                    else {
+                        const dx = x - prevPosition.x;
+                        const dy = y - prevPosition.y;
+                        theta0 += dx * 0.01;
+                        phi0 += dy * 0.01;
+                        if (phi0 < 0) phi0 = 0;
+                        if (phi0 >= Math.PI) phi0 = Math.PI;
+                        theta0 -= 2 * Math.PI * Math.floor(theta0 / (2 * Math.PI));
+                        renderFrame();
+                        prevPosition = {x, y};
+                    }
+
+                }
+
+                viewer.onmousedown = btnDownHandler;
+                viewer.onmousemove = btnMoveHandler;
+                viewer.onmouseup = btnUpHandler;
+                viewer.onmouseout = btnUpHandler;
+                viewer.onwheel = ev => {
+                    ev.preventDefault();
+                    if (ev.deltaY > 0 && hfov < Math.PI * 150 / 180) hfov += 0.1;
+                    if (ev.deltaY < 0 && hfov > 0.1) hfov -= 0.1;
+                    
+                    renderFrame();
+                }
+
+
+
+                viewer.ontouchstart = ev => {
+                    ev.preventDefault();
+                    const bbox = viewer.getBoundingClientRect();
+                    btnDownHandler({
+                        offsetX: ev.touches[0].clientX - bbox.x,
+                        offsetY: ev.touches[0].clientY - bbox.y
+                    });
+                }
+                viewer.ontouchmove = ev => {
+                    ev.preventDefault();
+                    const bbox = viewer.getBoundingClientRect();
+                    btnMoveHandler({
+                        offsetX: ev.touches[0].clientX - bbox.x,
+                        offsetY: ev.touches[0].clientY - bbox.y
+                    });
+                };
+                viewer.ontouchend = btnUpHandler;
+                viewer.ontouchcancel = btnUpHandler;
+
             });
         </script>
     </body>
