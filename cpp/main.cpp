@@ -81,10 +81,10 @@ struct Mat3 {
 
 extern "C" void viewerQuery(
     std::uint8_t* dst, 
-    int dstWidth, int dstHeight, float theta0, float phi0, float hfov
+    int dstWidth, int dstHeight, 
+    float theta0, float phi0, float gamma, float f
 ) {
 
-    float const f           = std::tan(hfov / 2);
     const int nCubeSide     = currentCubemap.cols;
 
     using std::cos;
@@ -103,13 +103,19 @@ extern "C" void viewerQuery(
         -sin(phi0), 0, cos(phi0)
     };
 
+    const Mat3 Tilt{
+        cos(gamma), -sin(gamma), 0,
+        sin(gamma), cos(gamma) , 0,
+        0         , 0          , 1
+    };
+
     const Mat3 projection{
         2 * f / dstWidth, 0               , -f * dstHeight / dstWidth,
         0               , 2 * f / dstWidth, -f,
         0               , 0               , 1
     };
 
-    const Mat3 transform = RotZ * RotY * projection;
+    const Mat3 transform = RotZ * RotY * Tilt * projection;
 
 
     for (int i = 0; i < dstHeight; ++i) {

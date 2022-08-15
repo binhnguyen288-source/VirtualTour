@@ -43,8 +43,8 @@
                 
                 
                     
-
-                let { theta0, phi0 } = startupView;
+                let { theta0, phi0, gamma } = startupView;
+                if (typeof gamma !== 'number') gamma = 0;
                 let hfov = Math.PI * 100 / 180;
 
                 const viewerData = Module._malloc(4 * viewer.width * viewer.height);
@@ -60,10 +60,14 @@
 
                 const renderFrame = () => {
 
+                    
+                    const aspectRatio = viewer.height / viewer.width;
+                    const f           = Math.tan(hfov / 2);
+
                     Module._viewerQuery(
                         viewerData,
                         viewer.width, viewer.height, 
-                        theta0, phi0, hfov
+                        theta0, phi0, gamma, f
                     );
 
 
@@ -72,25 +76,33 @@
 
                     hotspots = [];
                                     
-                    const aspectRatio = viewer.height / viewer.width;
-                    const f           = Math.tan(hfov / 2);
-                    const vfov        = 2 * Math.atan(aspectRatio * f);
-
                     for (const { theta, phi, text, redirect } of allHotspots) {
                     
                         let x = Math.cos(theta - theta0) * Math.sin(phi);
                         let y = Math.sin(theta - theta0) * Math.sin(phi);
                         let z = Math.cos(phi);
 
-                        const Rotx = x * Math.cos(phi0) - z * Math.sin(phi0);
-                        const Roty = y;
-                        const Rotz = x * Math.sin(phi0) + z * Math.cos(phi0);
+                        [x, y, z] = [
+                            x * Math.cos(phi0) - z * Math.sin(phi0),
+                            y,
+                            x * Math.sin(phi0) + z * Math.cos(phi0)
+                        ];
 
-                        if (Rotz <= 0) continue;
+                        [x, y, z] = [
+                            x * Math.cos(gamma) + y * Math.sin(gamma),
+                            -x * Math.sin(gamma) + y * Math.cos(gamma),
+                            z 
+                        ];
+                        
 
-                        const t = 1 / Rotz;
-                        x = Rotx * t / (f * aspectRatio);
-                        y = Roty * t / f;
+                        if (z <= 0) continue;
+
+                        const t = 1 / z;
+                        
+                        [x, y] = [
+                            x * t / (f * aspectRatio),
+                            y * t / f
+                        ];
 
                         const row = Math.floor(viewer.height * (x + 1) / 2);
                         const col = Math.floor(viewer.width * (y + 1) / 2);
@@ -172,8 +184,13 @@
                 viewer.onmouseout = btnUpHandler;
                 viewer.onwheel = ev => {
                     ev.preventDefault();
-                    if (ev.deltaY > 0 && hfov < Math.PI * 150 / 180) hfov += 0.1;
-                    if (ev.deltaY < 0 && hfov > 0.1) hfov -= 0.1;
+
+
+                    if (ev.deltaY > 0 && hfov < Math.PI * 150 / 180) gamma += 0.1;
+                    if (ev.deltaY < 0 && hfov > 0.1) gamma -= 0.1;
+
+                    while (gamma < 0) gamma += 2 * Math.PI;
+                    while (gamma >= 2 * Math.PI) gamma -= 2 * Math.PI;
                     
                     renderFrame();
                 }
