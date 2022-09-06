@@ -32,7 +32,8 @@
             }
 
             async function fetchArrayBuffer(fileLoc) {
-                const result = await Promise.race([
+                
+                const result = await Promise.any([
                     fetch(`${fileLoc}`),
                     fetch(`https://virtualtour.ddns.net/${fileLoc}`)
                 ]);
