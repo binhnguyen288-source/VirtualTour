@@ -1,1 +1,0 @@
- opencv/lib/libopencv_core.a opencv/lib/libopencv_imgcodecs.a opencv/lib/libopencv_imgproc.a opencv/lib/libopencv_core.a "opencv/lib/opencv4/3rdparty/liblibjpeg-turbo.a" opencv/lib/opencv4/3rdparty/liblibpng.a opencv/lib/opencv4/3rdparty/libzlib.a opencv/lib/opencv4/3rdparty/liblibopenjp2.a -lm 
