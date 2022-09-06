@@ -30,6 +30,16 @@
                         String.fromCharCode.apply(null, new Uint8Array(binaryFile.slice(base)))
                     );
             }
+
+            async function fetchArrayBuffer(fileLoc) {
+                const result = await Promise.race([
+                    fetch(`${fileLoc}`),
+                    fetch(`https://virtualtour.ddns.net/${fileLoc}`)
+                ]);
+
+                return result.arrayBuffer();
+            }
+
             wasmViewer().then(async (Module) => {
                     
                 const params = new URLSearchParams(window.location.search);
@@ -43,7 +53,7 @@
                 }
                 
 
-                const binaryFile = await (await fetch(`./cubemaps/${file}.pre`)).arrayBuffer();
+                const binaryFile = await fetchArrayBuffer(`cubemaps/${file}.pre`);
 
           
                 const {
@@ -54,9 +64,7 @@
 
                 loadCubemap(binaryFile);
 
-                fetch(`./cubemaps/${file}.bin`)
-                .then(response => response.arrayBuffer())
-                .then(bin => loadCubemap(bin));
+                fetchArrayBuffer(`cubemaps/${file}.bin`).then(bin => loadCubemap(bin));
 
                 
                 const viewer = document.getElementById('viewer');
