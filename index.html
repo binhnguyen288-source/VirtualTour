@@ -15,27 +15,48 @@
         
         <script src="./viewer.js"></script>
         <script>
-            wasmViewer().then(async (Module) => {
-                    
-                const params = new URLSearchParams(window.location.search);
-                const file = params.get("image") || 'Frontdoor';
-                
-                const {
-                    startupView,
-                    allHotspots
-                } = await (await fetch(`hotspots/${file}.json`)).json();
+            function readConfig(binaryFile) {
+                                
+                const view = new DataView(binaryFile);
 
+                let base = 0;
 
-                {
-                    const imageBuffer = await (await fetch(`./images/${file}.jpg`)).arrayBuffer();
-
-                    const cubemapTemp = Module._malloc(imageBuffer.byteLength);
-                    Module.HEAPU8.set(new Uint8Array(imageBuffer), cubemapTemp);
-                    Module._setCubemap(cubemapTemp, imageBuffer.byteLength);
-                    Module._free(cubemapTemp);
+                for (let i = 0; i < 6; ++i) {
+                    base += 4 + view.getUint32(base, true);
                 }
 
 
+                return JSON.parse(
+                        String.fromCharCode.apply(null, new Uint8Array(binaryFile.slice(base)))
+                    );
+            }
+            wasmViewer().then(async (Module) => {
+                    
+                const params = new URLSearchParams(window.location.search);
+                const file = params.get("image") || 'frontdoor';
+
+                const loadCubemap = (binaryFile) => {
+                    const cubemapTemp = Module._malloc(binaryFile.byteLength);
+                    Module.HEAPU8.set(new Uint8Array(binaryFile), cubemapTemp);
+                    Module._setCubemap(cubemapTemp);
+                    Module._free(cubemapTemp);
+                }
+                
+
+                const binaryFile = await (await fetch(`./cubemaps/${file}.pre`)).arrayBuffer();
+
+          
+                const {
+                    startupView,
+                    allHotspots
+                } = readConfig(binaryFile);
+
+
+                loadCubemap(binaryFile);
+
+                fetch(`./cubemaps/${file}.bin`)
+                .then(response => response.arrayBuffer())
+                .then(bin => loadCubemap(bin));
 
                 
                 const viewer = document.getElementById('viewer');

@@ -4,12 +4,22 @@
 #include <opencv2/opencv.hpp>
 
 static cv::Mat currentCubemap;
-extern "C" void setCubemap(uchar* rawImageContent, int size) {
+extern "C" void setCubemap(uchar* binaryFile) {
 
-    cv::Mat image(1, size, CV_8U, rawImageContent);
-
-    currentCubemap = cv::imdecode(image, cv::IMREAD_COLOR);
-
+    std::vector<uchar> buffer;
+    uint32_t base = 0;
+    uint32_t currentSize = 0;
+    int nCubeSide = 0;
+    for (int i = 0; i < 6; ++i) {
+        std::memcpy(&currentSize, &binaryFile[base], 4);
+        cv::Mat image_content(1, currentSize, CV_8U, &binaryFile[base + 4]);
+        cv::Mat face = cv::imdecode(image_content, cv::IMREAD_COLOR);
+        nCubeSide = face.rows;
+        base += 4 + currentSize;
+        buffer.insert(buffer.end(), face.data, face.data + 3 * nCubeSide * nCubeSide);
+    }
+    currentCubemap = cv::Mat(6 * nCubeSide, nCubeSide, CV_8UC3);
+    std::copy(buffer.begin(), buffer.end(), currentCubemap.data);
     cv::cvtColor(currentCubemap, currentCubemap, cv::COLOR_BGR2RGB);
 }
 

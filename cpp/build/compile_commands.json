@@ -1,0 +1,7 @@
+[
+{
+  "directory": "C:/Users/nguye/Documents/GitHub/VirtualTour/cpp/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -isystem C:/Users/nguye/Documents/GitHub/VirtualTour/cpp/opencv/include/opencv4 -g -O3 -ffast-math -std=gnu++17 -o CMakeFiles\\viewer.dir\\main.cpp.obj -c C:\\Users\\nguye\\Documents\\GitHub\\VirtualTour\\cpp\\main.cpp",
+  "file": "C:\\Users\\nguye\\Documents\\GitHub\\VirtualTour\\cpp\\main.cpp"
+}
+]

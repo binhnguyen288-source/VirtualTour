@@ -1,0 +1,1 @@
+C:\Users\nguye\Downloads\emsdk-3.1.20\emsdk-3.1.20\upstream\emscripten\em++.bat -O3 -ffast-math -sEXPORTED_FUNCTIONS=_malloc,_free,_viewerQuery,_setCubemap -sALLOW_MEMORY_GROWTH -sMODULARIZE -sEXPORT_NAME=wasmViewer @CMakeFiles\viewer.dir\objects1.rsp -o viewer.js @CMakeFiles\viewer.dir\linklibs.rsp
