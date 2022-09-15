@@ -4,10 +4,24 @@
 #include <opencv2/opencv.hpp>
 
 static cv::Mat currentCubemap;
-extern "C" void setCubemap(uchar* binaryFile) {
+
+
+static char configBuffer[1 << 20];
+
+extern "C" const char* setCubemap(uchar* binaryFile, int bufLen) {
+    const uint32_t key =
+        ((binaryFile[0] << 8u) | 
+        (binaryFile[1] << 24u) | 
+        (binaryFile[2] << 16u) | 
+        (binaryFile[3] << 0u)) ^ 0xDEADBEEF;
+    
+    for (int i = 0; i < bufLen; ++i) {
+        binaryFile[i] ^= (key >> (8 * (i % 4)));
+    }
+    
 
     std::vector<uchar> buffer;
-    uint32_t base = 0;
+    uint32_t base = 4;
     uint32_t currentSize = 0;
     int nCubeSide = 0;
     for (int i = 0; i < 6; ++i) {
@@ -18,9 +32,12 @@ extern "C" void setCubemap(uchar* binaryFile) {
         base += 4 + currentSize;
         buffer.insert(buffer.end(), face.data, face.data + 3 * nCubeSide * nCubeSide);
     }
+    std::memset(configBuffer, 0, sizeof(configBuffer));
+    std::copy(binaryFile + base, binaryFile + bufLen, configBuffer);
     currentCubemap = cv::Mat(6 * nCubeSide, nCubeSide, CV_8UC3);
     std::copy(buffer.begin(), buffer.end(), currentCubemap.data);
     cv::cvtColor(currentCubemap, currentCubemap, cv::COLOR_BGR2RGB);
+    return configBuffer;
 }
 
 inline std::pair<float, float> mapsToCube(float x, float y, float z) {
