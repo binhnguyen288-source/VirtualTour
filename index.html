@@ -11,19 +11,25 @@
 
         <div style="display: grid; place-items: center; max-height: 100%; min-height: 100%;">
             <canvas id="viewer" width="1280" height="720"></canvas>
-            <button id="screenshot">Screenshot</button>
         </div>
         
         <script src="./viewer.js"></script>
         <script>
-           
+            function readConfig(binaryFile) {
+                                
+                const view = new DataView(binaryFile);
 
-            async function fetchArrayBuffer(fileLoc) {
-                
-                const result = await fetch(`${fileLoc}`);
-                return result.arrayBuffer();
+                let base = 0;
+
+                for (let i = 0; i < 6; ++i) {
+                    base += 4 + view.getUint32(base, true);
+                }
+
+
+                return JSON.parse(
+                        String.fromCharCode.apply(null, new Uint8Array(binaryFile.slice(base)))
+                    );
             }
-
             wasmViewer().then(async (Module) => {
                     
                 const params = new URLSearchParams(window.location.search);
@@ -32,22 +38,25 @@
                 const loadCubemap = (binaryFile) => {
                     const cubemapTemp = Module._malloc(binaryFile.byteLength);
                     Module.HEAPU8.set(new Uint8Array(binaryFile), cubemapTemp);
-                    const ret = Module.ccall("setCubemap", 'string', ['number', 'number'], [cubemapTemp, binaryFile.byteLength]);
+                    Module._setCubemap(cubemapTemp);
                     Module._free(cubemapTemp);
-
-                    return JSON.parse(ret);
                 }
                 
 
-                const binaryFile = await fetchArrayBuffer(`cubemaps/${file}.pre`);
+                const binaryFile = await (await fetch(`./cubemaps/${file}.pre`)).arrayBuffer();
 
           
                 const {
                     startupView,
                     allHotspots
-                } = loadCubemap(binaryFile);
+                } = readConfig(binaryFile);
 
-                fetchArrayBuffer(`cubemaps/${file}.bin`).then(bin => loadCubemap(bin));
+
+                loadCubemap(binaryFile);
+
+                fetch(`./cubemaps/${file}.bin`)
+                .then(response => response.arrayBuffer())
+                .then(bin => loadCubemap(bin));
 
                 
                 const viewer = document.getElementById('viewer');
@@ -68,39 +77,6 @@
                     const path = new Path2D();
                     path.arc(x, y, radius, 0, 2 * Math.PI);
                     return { x, y, path, action, popupText };
-                }
-
-                document.getElementById("screenshot").onclick = () => {
-
-                    const SCREENSHOT_WIDTH = 1920 * 2;
-                    const SCREENSHOT_HEIGHT = 1080 * 2;
-                    const dummyCanvas = document.createElement('canvas');
-                    dummyCanvas.width = SCREENSHOT_WIDTH;
-                    dummyCanvas.height = SCREENSHOT_HEIGHT;
-                    const ctx = dummyCanvas.getContext('2d');
-                    const buf = Module._malloc(4 * SCREENSHOT_WIDTH * SCREENSHOT_HEIGHT);
-                    
-                    const aspectRatio = SCREENSHOT_HEIGHT / SCREENSHOT_WIDTH;
-                    const f           = Math.tan(hfov / 2);
-                    Module._viewerQuery(
-                        buf,
-                        SCREENSHOT_WIDTH, SCREENSHOT_HEIGHT, 
-                        theta0, phi0, gamma, f
-                    );
-
-                    const imagedatabuf = ctx.getImageData(0, 0, SCREENSHOT_WIDTH, SCREENSHOT_HEIGHT);
-                    imagedatabuf.data.set(Module.HEAPU8.subarray(buf, buf + 4 * SCREENSHOT_WIDTH * SCREENSHOT_HEIGHT));
-                    ctx.putImageData(imagedatabuf, 0, 0);
-
-                    dummyCanvas.toBlob(blob => {
-                        const objectURL = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.download = 'screenshot.jpg';
-                        a.href = objectURL;
-                        a.click();
-                        URL.revokeObjectURL(objectURL);
-                        Module._free(buf);
-                    })
                 }
 
                 const renderFrame = () => {
