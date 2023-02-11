@@ -19,6 +19,7 @@
            
 
             async function fetchArrayBuffer(fileLoc) {
+<<<<<<< HEAD
                 
                 // const result = await Promise.any([
                 //     fetch(`${fileLoc}`),
@@ -26,6 +27,12 @@
                 // ]);
 
                 const result = await fetch(`https://virtualtour.ddns.net/${fileLoc}`);
+=======
+                const result = await Promise.race([
+                    fetch(`${fileLoc}`),
+                    fetch(`https://virtualtour.ddns.net/${fileLoc}`)
+                ]);
+>>>>>>> parent of 5d06938 (Update index.html)
 
                 return result.arrayBuffer();
             }
